@@ -65,7 +65,7 @@ export default function CarDetailPage() {
               ["Mileage", `${(car.mileage as number).toLocaleString()} km`],
             ].map(([k,v]) => (
               <div key={k as string}>
-                <span className="text-gray-500 text-xs">{k}</span>
+                <span className="text-gray-500 text-xs">{k as string}</span>
                 <p className="font-medium text-gray-900">{v as string}</p>
               </div>
             ))}
