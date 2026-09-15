@@ -78,7 +78,7 @@ export default function CarDetailPage() {
                 ["Monthly", car.monthlyPrice || "-"], ["Deposit", car.deposit],
               ].map(([k,v]) => (
                 <div key={k as string}>
-                  <span className="text-gray-500 text-xs">{k}</span>
+                  <span className="text-gray-500 text-xs">{k as string}</span>
                   <p className="font-medium text-blue-600">{typeof v === "number" ? formatIQD(v) : v as string}</p>
                 </div>
               ))}
