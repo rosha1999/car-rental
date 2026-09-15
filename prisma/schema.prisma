@@ -1,0 +1,217 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  role          String    @default("ADMIN") // ADMIN | STAFF | VIEWER
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  auditLogs     AuditLog[]
+}
+
+model Car {
+  id            String   @id @default(cuid())
+  name          String
+  make          String
+  model         String
+  year          Int
+  color         String
+  plate         String   @unique
+  vin           String?  @unique
+  fuelType      String   @default("PETROL") // PETROL | DIESEL | ELECTRIC | HYBRID
+  transmission  String   @default("AUTOMATIC") // AUTOMATIC | MANUAL
+  seats         Int      @default(5)
+  mileage       Int      @default(0)
+  dailyPrice    Float
+  weeklyPrice   Float?
+  monthlyPrice  Float?
+  customPrice   Float?
+  deposit       Float    @default(0)
+  description   String?  @default("")
+  status        String   @default("AVAILABLE") // AVAILABLE | RENTED | RESERVED | MAINTENANCE | INACTIVE
+  isDeleted     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  images        CarImage[]
+  rentals       Rental[]
+  reservations  Reservation[]
+  maintenances  MaintenanceRecord[]
+
+  @@index([plate])
+  @@index([status])
+  @@index([make, model])
+}
+
+model CarImage {
+  id        String   @id @default(cuid())
+  carId     String
+  url       String
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  car       Car      @relation(fields: [carId], references: [id], onDelete: Cascade)
+}
+
+model Customer {
+  id                String    @id @default(cuid())
+  fullName          String
+  phone             String
+  altPhone          String?
+  address           String?
+  licenseNumber     String?
+  licenseExpiry     DateTime?
+  nationality       String?
+  notes             String?   @default("")
+  isArchived        Boolean   @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  rentals           Rental[]
+  reservations      Reservation[]
+  bookingRequests   BookingRequest[]
+
+  @@index([phone])
+  @@index([fullName])
+  @@index([licenseNumber])
+}
+
+model Rental {
+  id              String    @id @default(cuid())
+  rentalNumber    String    @unique
+  carId           String
+  customerId      String
+  startDate       DateTime
+  endDate         DateTime
+  actualReturnDate DateTime?
+  rentalType      String    @default("DAILY") // DAILY | WEEKLY | MONTHLY | CUSTOM
+  durationDays    Int
+  basePrice       Float
+  discount        Float     @default(0)
+  discountNote    String?   @default("")
+  totalPrice      Float
+  deposit         Float     @default(0)
+  depositReturned Boolean   @default(false)
+  status          String    @default("ACTIVE") // RESERVED | ACTIVE | COMPLETED | CANCELLED | OVERDUE
+  notes           String?   @default("")
+  // Return info
+  returnMileage   Int?
+  returnFuelLevel String?   @default("")
+  returnCondition String?   @default("")
+  returnDamageNotes String? @default("")
+  additionalCharges Float   @default(0)
+  lateFee         Float     @default(0)
+  overridePriceNote String? @default("")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  car             Car       @relation(fields: [carId], references: [id])
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  payments        RentalPayment[]
+
+  @@index([status])
+  @@index([carId])
+  @@index([customerId])
+  @@index([startDate, endDate])
+}
+
+model RentalPayment {
+  id            String   @id @default(cuid())
+  rentalId      String
+  amount        Float
+  paymentDate   DateTime @default(now())
+  method        String   @default("CASH") // CASH | BANK_TRANSFER | OTHER
+  notes         String?  @default("")
+  createdAt     DateTime @default(now())
+
+  rental        Rental   @relation(fields: [rentalId], references: [id], onDelete: Cascade)
+
+  @@index([rentalId])
+}
+
+model Reservation {
+  id            String   @id @default(cuid())
+  reservationNumber String @unique
+  carId         String
+  customerId    String
+  startDate     DateTime
+  endDate       DateTime
+  estimatedPrice Float
+  deposit       Float    @default(0)
+  notes         String?  @default("")
+  status        String   @default("PENDING") // PENDING | CONFIRMED | CANCELLED | CONVERTED_TO_RENTAL
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  car           Car      @relation(fields: [carId], references: [id])
+  customer      Customer @relation(fields: [customerId], references: [id])
+
+  @@index([status])
+  @@index([carId])
+  @@index([startDate, endDate])
+}
+
+model MaintenanceRecord {
+  id          String   @id @default(cuid())
+  carId       String
+  description String
+  cost        Float    @default(0)
+  startDate   DateTime
+  endDate     DateTime?
+  notes       String?  @default("")
+  createdAt   DateTime @default(now())
+
+  car         Car      @relation(fields: [carId], references: [id])
+}
+
+model BookingRequest {
+  id          String    @id @default(cuid())
+  customerId  String?
+  customerName String
+  customerPhone String
+  carId       String?
+  carName     String
+  startDate   DateTime
+  endDate     DateTime
+  notes       String?   @default("")
+  status      String    @default("PENDING") // PENDING | CONFIRMED | REJECTED | CONTACTED
+  adminNotes  String?   @default("")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  customer    Customer? @relation(fields: [customerId], references: [id])
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  userId      String?
+  action      String
+  entity      String
+  entityId    String?
+  description String
+  createdAt   DateTime @default(now())
+
+  user        User?    @relation(fields: [userId], references: [id])
+
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
