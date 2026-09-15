@@ -18,8 +18,8 @@ export default function CustomerDetailPage() {
   if (!customer) return <div className="text-center py-20 text-red-500">Customer not found</div>;
 
   const rentals = (customer.rentals as unknown[]) ?? [];
-  const totalPaid = rentals.reduce((s, r: unknown) => s + ((r as {payments:{amount:number}[]}).payments ?? []).reduce((ps,p) => ps+p.amount, 0), 0);
-  const totalRented = rentals.reduce((s, r: unknown) => s + ((r as Record<string,number>).totalPrice ?? 0), 0);
+  const totalPaid = rentals.reduce((s: number, r: unknown) => s + ((r as {payments:{amount:number}[]}).payments ?? []).reduce((ps: number, p: {amount:number}) => ps+p.amount, 0), 0);
+  const totalRented = rentals.reduce((s: number, r: unknown) => s + ((r as Record<string,number>).totalPrice ?? 0), 0);
   const outstanding = Math.max(0, totalRented - totalPaid);
 
   return (
