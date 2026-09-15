@@ -27,7 +27,7 @@ export default function CustomerDetailPage() {
       <div className="page-header">
         <div className="flex items-center gap-3">
           <Link href="/customers" className="btn-secondary btn-sm p-2"><ArrowLeft className="w-4 h-4" /></Link>
-          <div><h1 className="page-title">{customer.fullName as string}</h1>{customer.isArchived && <span className="badge bg-gray-100 text-gray-500 text-xs">Archived</span>}</div>
+          <div><h1 className="page-title">{customer.fullName as string}</h1>{Boolean(customer.isArchived) && <span className="badge bg-gray-100 text-gray-500 text-xs">Archived</span>}</div>
         </div>
         <Link href={`/customers/${id}/edit`} className="btn-primary"><Edit className="w-4 h-4" />Edit</Link>
       </div>
