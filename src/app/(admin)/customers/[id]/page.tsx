@@ -5,9 +5,44 @@ import Link from "next/link";
 import { ArrowLeft, Edit, Phone, MapPin, FileText } from "lucide-react";
 import { formatIQD, formatDate, rentalStatusColor, cn } from "@/lib/utils";
 
+interface Payment {
+  amount: number;
+}
+
+interface Car {
+  name: string;
+  plate: string;
+}
+
+interface Rental {
+  id: string;
+  rentalNumber: string;
+  car: Car;
+  startDate: string;
+  endDate: string;
+  totalPrice: number;
+  payments: Payment[];
+  status: string;
+}
+
+interface Customer {
+  id: string;
+  fullName: string;
+  phone?: string;
+  altPhone?: string;
+  nationality?: string;
+  licenseNumber?: string;
+  licenseExpiry?: string;
+  address?: string;
+  createdAt: string;
+  isArchived?: boolean;
+  notes?: string;
+  rentals?: Rental[];
+}
+
 export default function CustomerDetailPage() {
   const { id } = useParams<{id:string}>();
-  const [customer, setCustomer] = useState<Record<string,unknown>|null>(null);
+  const [customer, setCustomer] = useState<Customer|null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -17,17 +52,27 @@ export default function CustomerDetailPage() {
   if (loading) return <div className="text-center py-20 text-gray-400 animate-pulse">Loading...</div>;
   if (!customer) return <div className="text-center py-20 text-red-500">Customer not found</div>;
 
-  const rentals = (customer.rentals as unknown[]) ?? [];
-  const totalPaid = rentals.reduce((s: number, r: unknown) => s + ((r as {payments:{amount:number}[]}).payments ?? []).reduce((ps: number, p: {amount:number}) => ps+p.amount, 0), 0);
-  const totalRented = rentals.reduce((s: number, r: unknown) => s + ((r as Record<string,number>).totalPrice ?? 0), 0);
+  const rentals = customer.rentals ?? [];
+  const totalPaid = rentals.reduce((s, r) => s + (r.payments ?? []).reduce((ps, p) => ps + p.amount, 0), 0);
+  const totalRented = rentals.reduce((s, r) => s + (r.totalPrice ?? 0), 0);
   const outstanding = Math.max(0, totalRented - totalPaid);
+
+  const infoRows: [string, string][] = [
+    ["Phone", customer.phone || "-"],
+    ["Alt Phone", customer.altPhone || "-"],
+    ["Nationality", customer.nationality || "-"],
+    ["License #", customer.licenseNumber || "-"],
+    ["License Expiry", customer.licenseExpiry ? formatDate(customer.licenseExpiry) : "-"],
+    ["Address", customer.address || "-"],
+    ["Added", formatDate(customer.createdAt)],
+  ];
 
   return (
     <div className="max-w-4xl space-y-6">
       <div className="page-header">
         <div className="flex items-center gap-3">
           <Link href="/customers" className="btn-secondary btn-sm p-2"><ArrowLeft className="w-4 h-4" /></Link>
-          <div><h1 className="page-title">{customer.fullName as string}</h1>{Boolean(customer.isArchived) && <span className="badge bg-gray-100 text-gray-500 text-xs">Archived</span>}</div>
+          <div><h1 className="page-title">{customer.fullName}</h1>{customer.isArchived && <span className="badge bg-gray-100 text-gray-500 text-xs">Archived</span>}</div>
         </div>
         <Link href={`/customers/${id}/edit`} className="btn-primary"><Edit className="w-4 h-4" />Edit</Link>
       </div>
@@ -41,15 +86,11 @@ export default function CustomerDetailPage() {
       <div className="card space-y-3">
         <h2 className="font-semibold">Customer Information</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-          {[
-            ["Phone", customer.phone],["Alt Phone", customer.altPhone || "-"],["Nationality", customer.nationality || "-"],
-            ["License #", customer.licenseNumber || "-"],["License Expiry", customer.licenseExpiry ? formatDate(customer.licenseExpiry as string) : "-"],
-            ["Address", customer.address || "-"],["Added", formatDate(customer.createdAt as string)],
-          ].map(([k,v]) => (
-            <div key={k as string}><span className="text-gray-500 text-xs">{k as string}</span><p className="font-medium">{v as string}</p></div>
+          {infoRows.map(([k,v]) => (
+            <div key={k}><span className="text-gray-500 text-xs">{k}</span><p className="font-medium">{v}</p></div>
           ))}
         </div>
-        {customer.notes && <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">{customer.notes as string}</div>}
+        {customer.notes && <div className="bg-gray-50 p-3 rounded-lg text-sm text-gray-600">{customer.notes}</div>}
       </div>
 
       <div className="card">
@@ -63,7 +104,7 @@ export default function CustomerDetailPage() {
             <table>
               <thead><tr><th>#</th><th>Car</th><th>Start</th><th>End</th><th>Total</th><th>Paid</th><th>Status</th><th></th></tr></thead>
               <tbody>
-                {(rentals as {id:string;rentalNumber:string;car:{name:string;plate:string};startDate:string;endDate:string;totalPrice:number;payments:{amount:number}[];status:string}[]).map(r=>{
+                {rentals.map(r=>{
                   const paid = r.payments.reduce((s,p)=>s+p.amount,0);
                   return <tr key={r.id}>
                     <td className="font-mono text-xs">{r.rentalNumber}</td>
