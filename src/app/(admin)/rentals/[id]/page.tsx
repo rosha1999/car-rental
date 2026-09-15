@@ -9,10 +9,55 @@ const PAY_METHODS = ["CASH","BANK_TRANSFER","OTHER"] as const;
 const FUEL_LEVELS = ["Full","3/4","1/2","1/4","Empty"] as const;
 const CONDITIONS = ["Excellent","Good","Fair","Poor"] as const;
 
+interface Payment {
+  id: string;
+  amount: number;
+  paymentDate: string;
+  method: string;
+  notes?: string;
+}
+
+interface Car {
+  id: string;
+  name: string;
+  plate: string;
+}
+
+interface CustomerBrief {
+  id: string;
+  fullName: string;
+  phone: string;
+}
+
+interface Rental {
+  id: string;
+  rentalNumber: string;
+  status: string;
+  rentalType: string;
+  durationDays: number;
+  startDate: string;
+  endDate: string;
+  deposit: number;
+  basePrice: number;
+  discount: number;
+  additionalCharges: number;
+  lateFee: number;
+  totalPrice: number;
+  notes?: string;
+  actualReturnDate?: string;
+  returnFuelLevel?: string;
+  returnCondition?: string;
+  returnMileage?: number;
+  returnDamageNotes?: string;
+  payments: Payment[];
+  car: Car;
+  customer: CustomerBrief;
+}
+
 export default function RentalDetailPage() {
   const { id } = useParams<{id:string}>();
   const router = useRouter();
-  const [rental, setRental] = useState<Record<string,unknown>|null>(null);
+  const [rental, setRental] = useState<Rental|null>(null);
   const [loading, setLoading] = useState(true);
   const [showPayForm, setShowPayForm] = useState(false);
   const [showReturnForm, setShowReturnForm] = useState(false);
@@ -35,14 +80,14 @@ export default function RentalDetailPage() {
   if (loading) return <div className="text-center py-20 text-gray-400 animate-pulse">Loading...</div>;
   if (!rental) return <div className="text-center py-20 text-red-500">Rental not found</div>;
 
-  const payments = (rental.payments as {id:string;amount:number;paymentDate:string;method:string;notes?:string}[]) ?? [];
-  const car = rental.car as Record<string,unknown>;
-  const customer = rental.customer as Record<string,string>;
+  const payments = rental.payments ?? [];
+  const car = rental.car;
+  const customer = rental.customer;
   const paid = payments.reduce((s,p)=>s+p.amount,0);
-  const totalCost = (rental.totalPrice as number)+(rental.additionalCharges as number)+(rental.lateFee as number);
+  const totalCost = rental.totalPrice + rental.additionalCharges + rental.lateFee;
   const balance = Math.max(0, totalCost - paid);
-  const dr = daysRemaining(rental.endDate as string);
-  const isActive = ["ACTIVE","OVERDUE","RESERVED"].includes(rental.status as string);
+  const dr = daysRemaining(rental.endDate);
+  const isActive = ["ACTIVE","OVERDUE","RESERVED"].includes(rental.status);
 
   const handlePayment = async (e: React.FormEvent) => {
     e.preventDefault(); setSaving(true);
@@ -70,8 +115,8 @@ export default function RentalDetailPage() {
         <div className="flex items-center gap-3">
           <Link href="/rentals" className="btn-secondary btn-sm p-2"><ArrowLeft className="w-4 h-4" /></Link>
           <div>
-            <h1 className="page-title font-mono">{rental.rentalNumber as string}</h1>
-            <span className={cn("badge",rentalStatusColor(rental.status as string))}>{rental.status as string}</span>
+            <h1 className="page-title font-mono">{rental.rentalNumber}</h1>
+            <span className={cn("badge",rentalStatusColor(rental.status))}>{rental.status}</span>
           </div>
         </div>
         <div className="flex gap-2">
@@ -88,7 +133,7 @@ export default function RentalDetailPage() {
       {/* Status Alert */}
       {dr < 0 && isActive && (
         <div className="bg-red-50 border border-red-300 rounded-xl p-4">
-          <p className="font-bold text-red-700">⚠️ OVERDUE — {daysOverdue(rental.endDate as string)} day(s) past return date</p>
+          <p className="font-bold text-red-700">⚠️ OVERDUE — {daysOverdue(rental.endDate)} day(s) past return date</p>
         </div>
       )}
       {dr === 0 && isActive && (
@@ -102,8 +147,8 @@ export default function RentalDetailPage() {
         <div className="card space-y-3">
           <h2 className="font-semibold">Vehicle</h2>
           <div className="grid grid-cols-2 gap-2 text-sm">
-            <div><span className="text-gray-500 text-xs">Car</span><p className="font-medium">{car?.name as string}</p></div>
-            <div><span className="text-gray-500 text-xs">Plate</span><p className="font-mono text-sm">{car?.plate as string}</p></div>
+            <div><span className="text-gray-500 text-xs">Car</span><p className="font-medium">{car?.name}</p></div>
+            <div><span className="text-gray-500 text-xs">Plate</span><p className="font-mono text-sm">{car?.plate}</p></div>
           </div>
           <Link href={`/cars/${car?.id}`} className="text-blue-600 text-sm hover:underline">View car →</Link>
         </div>
@@ -123,24 +168,28 @@ export default function RentalDetailPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
           {[
             ["Type",rental.rentalType],["Duration",`${rental.durationDays} days`],
-            ["Start",formatDate(rental.startDate as string)],["End",formatDate(rental.endDate as string)],
-            ["Remaining",dr<0?`OVERDUE ${-dr}d`:`${dr} days`],["Deposit",formatIQD(rental.deposit as number)],
+            ["Start",formatDate(rental.startDate)],["End",formatDate(rental.endDate)],
+            ["Remaining",dr<0?`OVERDUE ${-dr}d`:`${dr} days`],["Deposit",formatIQD(rental.deposit)],
           ].map(([k,v])=>(
-            <div key={k as string}><span className="text-gray-500 text-xs">{k as string}</span>
-              <p className={cn("font-medium",k==="Remaining"&&dr<0?"text-red-600":"")}>{v as string}</p></div>
+            <div key={k as string}><span className="text-gray-500 text-xs">{k}</span>
+              <p className={cn("font-medium",k==="Remaining"&&dr<0?"text-red-600":"")}>{v}</p></div>
           ))}
         </div>
-        {rental.notes && <div className="mt-3 bg-gray-50 p-3 rounded-lg text-sm text-gray-600">{rental.notes as string}</div>}
+        {typeof rental.notes === "string" && (
+  <div className="mt-3 bg-gray-50 p-3 rounded-lg text-sm text-gray-600">
+    {rental.notes}
+  </div>
+)}
       </div>
 
       {/* Financial Summary */}
       <div className="card">
         <h2 className="font-semibold mb-4">Financial Summary</h2>
         <div className="space-y-2 text-sm">
-          <div className="flex justify-between"><span className="text-gray-600">Base Price</span><span>{formatIQD(rental.basePrice as number)}</span></div>
-          {(rental.discount as number)>0&&<div className="flex justify-between text-green-600"><span>Discount</span><span>- {formatIQD(rental.discount as number)}</span></div>}
-          {(rental.additionalCharges as number)>0&&<div className="flex justify-between text-orange-600"><span>Additional Charges</span><span>+ {formatIQD(rental.additionalCharges as number)}</span></div>}
-          {(rental.lateFee as number)>0&&<div className="flex justify-between text-red-600"><span>Late Fee</span><span>+ {formatIQD(rental.lateFee as number)}</span></div>}
+          <div className="flex justify-between"><span className="text-gray-600">Base Price</span><span>{formatIQD(rental.basePrice)}</span></div>
+          {rental.discount>0&&<div className="flex justify-between text-green-600"><span>Discount</span><span>- {formatIQD(rental.discount)}</span></div>}
+          {rental.additionalCharges>0&&<div className="flex justify-between text-orange-600"><span>Additional Charges</span><span>+ {formatIQD(rental.additionalCharges)}</span></div>}
+          {rental.lateFee>0&&<div className="flex justify-between text-red-600"><span>Late Fee</span><span>+ {formatIQD(rental.lateFee)}</span></div>}
           <div className="flex justify-between font-bold text-base border-t pt-2"><span>Total</span><span className="text-blue-700">{formatIQD(totalCost)}</span></div>
           <div className="flex justify-between text-green-600 font-medium"><span>Total Paid</span><span>{formatIQD(paid)}</span></div>
           <div className={cn("flex justify-between font-bold text-base",balance>0?"text-red-600":"text-green-600")}>
@@ -157,7 +206,7 @@ export default function RentalDetailPage() {
         </div>
         {payments.length===0?<p className="text-gray-400 text-sm">No payments recorded</p>:(
           <div className="space-y-2">
-            {payments.map((p,i)=>(
+            {payments.map((p)=>(
               <div key={p.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg text-sm">
                 <div><p className="font-medium text-green-700">{formatIQD(p.amount)}</p><p className="text-xs text-gray-500">{formatDate(p.paymentDate)} &bull; {p.method}</p></div>
                 {p.notes&&<p className="text-xs text-gray-500 ml-4">{p.notes}</p>}
@@ -173,14 +222,14 @@ export default function RentalDetailPage() {
           <h2 className="font-semibold mb-3 text-green-800"><CheckCircle className="inline w-4 h-4 mr-1" />Vehicle Returned</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
             {[
-              ["Return Date",formatDateTime(rental.actualReturnDate as string)],
+              ["Return Date",formatDateTime(rental.actualReturnDate)],
               ["Fuel Level",rental.returnFuelLevel||"N/A"],["Condition",rental.returnCondition||"N/A"],
-              ["Final Mileage",rental.returnMileage?`${(rental.returnMileage as number).toLocaleString()} km`:"N/A"],
+              ["Final Mileage",rental.returnMileage?`${rental.returnMileage.toLocaleString()} km`:"N/A"],
             ].map(([k,v])=>(
-              <div key={k as string}><span className="text-gray-500 text-xs">{k as string}</span><p className="font-medium">{v as string}</p></div>
+              <div key={k as string}><span className="text-gray-500 text-xs">{k}</span><p className="font-medium">{v}</p></div>
             ))}
           </div>
-          {rental.returnDamageNotes&&<p className="text-sm text-orange-700 mt-2">Damage: {rental.returnDamageNotes as string}</p>}
+          {rental.returnDamageNotes&&<p className="text-sm text-orange-700 mt-2">Damage: {rental.returnDamageNotes}</p>}
         </div>
       )}
 
@@ -226,7 +275,7 @@ export default function RentalDetailPage() {
               </div>
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" checked={returnData.depositReturned} onChange={e=>setReturnData(d=>({...d,depositReturned:e.target.checked}))} />
-                Deposit returned to customer ({formatIQD(rental.deposit as number)})
+                Deposit returned to customer ({formatIQD(rental.deposit)})
               </label>
               <div className="flex gap-3 pt-2">
                 <button type="submit" disabled={saving} className="btn-primary flex-1 justify-center">{saving?"Processing...":"Complete Return"}</button>
